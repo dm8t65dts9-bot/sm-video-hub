@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - SM Video Hub</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial; background:#0f172a; color:white; margin:0; padding:20px; }
+    .box { max-width:520px; margin:auto; background:#1e293b; padding:22px; border-radius:14px; }
+    input, textarea, button {
+      width:100%; padding:11px; margin:8px 0;
+      border-radius:8px; border:1px solid #334155;
+      background:#0f172a; color:white;
+    }
+    button { background:#38bdf8; color:#0f172a; font-weight:bold; cursor:pointer; border:0; }
+    .msg { margin-top:10px; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h2>SM Video Hub Admin</h2>
+
+  <div id="loginForm">
+    <input id="email" type="email" placeholder="Admin email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="adminForm" style="display:none">
+    <input id="title" placeholder="ভিডিওর শিরোনাম">
+    <input id="category" placeholder="ক্যাটাগরি">
+    <input id="videoUrl" placeholder="YouTube / Vimeo / Direct video URL">
+    <input id="thumbnail" placeholder="Thumbnail image URL">
+    <textarea id="description" placeholder="বর্ণনা"></textarea>
+    <button onclick="addVideo()">ভিডিও যোগ করুন</button>
+    <button onclick="logout()" style="background:#ef4444;color:white">Logout</button>
+  </div>
+
+  <div id="msg" class="msg"></div>
+</div>
+
+<script>
+  const supabase = window.supabase.createClient(
+    "https://urmhbibeksunrkmwfxyj.supabase.co",
+    "sb_publishable_99fjx79j7zuGfdfy5wP0lA_ruQgzMUU"
+  );
+
+  const ADMIN_EMAIL = "mahbubvai248@gmail.com";
+
+  async function login() {
+    const email = email.value;
+    const password = password.value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    document.getElementById("msg").textContent = error ? error.message : "Login successful";
+    if (!error) showAdmin();
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    location.reload();
+  }
+
+  function showAdmin() {
+    loginForm.style.display = "none";
+    adminForm.style.display = "block";
+  }
+
+  async function addVideo() {
+    const { error } = await supabase.from("videos").insert({
+      title: title.value,
+      category: category.value || "General",
+      video_url: videoUrl.value,
+      thumbnail_url: thumbnail.value,
+      description: description.value,
+      is_published: true
+    });
+
+    document.getElementById("msg").textContent = error
+      ? "Error: " + error.message
+      : "ভিডিও সফলভাবে যোগ হয়েছে!";
+
+    if (!error) {
+      title.value = category.value = videoUrl.value = thumbnail.value = description.value = "";
+    }
+  }
+
+  supabase.auth.getUser().then(({ data }) => {
+    if (data.user && data.user.email === ADMIN_EMAIL) showAdmin();
+  });
+</script>
+</body>
+</html>

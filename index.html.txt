@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SM Video Hub</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    header {
+      padding: 18px;
+      background: #111827;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    h1 { margin: 0; font-size: 22px; color: #38bdf8; }
+    a { color: #38bdf8; text-decoration: none; }
+    .container { max-width: 1100px; margin: auto; padding: 20px; }
+    .search {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: white;
+      margin-bottom: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid #334155;
+    }
+    .card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      background: #334155;
+    }
+    .card-body { padding: 12px; }
+    .card h3 { margin: 0 0 6px; font-size: 16px; }
+    .card p { margin: 0; color: #94a3b8; font-size: 13px; }
+    .player {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.9);
+      display: none;
+      place-items: center;
+      padding: 20px;
+    }
+    .player.active { display: grid; }
+    .player-inner {
+      width: 100%;
+      max-width: 900px;
+      background: #111827;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    iframe {
+      width: 100%;
+      aspect-ratio: 16/9;
+      border: 0;
+    }
+    .player-info { padding: 14px; }
+    .close {
+      margin-top: 10px;
+      padding: 8px 14px;
+      background: #ef4444;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SM Video Hub</h1>
+    <a href="admin.html">Admin Panel</a>
+  </header>
+
+  <div class="container">
+    <input id="search" class="search" placeholder="ভিডিও খুঁজুন...">
+    <div id="videos" class="grid"></div>
+  </div>
+
+  <div id="player" class="player">
+    <div class="player-inner">
+      <div id="videoFrame"></div>
+      <div class="player-info">
+        <h3 id="videoTitle"></h3>
+        <p id="videoDesc"></p>
+        <button class="close" onclick="closePlayer()">বন্ধ করুন</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const supabase = window.supabase.createClient(
+    "https://urmhbibeksunrkmwfxyj.supabase.co",
+    "sb_publishable_99fjx79j7zuGfdfy5wP0lA_ruQgzMUU"
+  );
+
+  let allVideos = [];
+
+  function toEmbed(url) {
+    const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+    if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+    const vm = url.match(/vimeo\.com\/(\d+)/);
+    if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
+    return url;
+  }
+
+  function render(list) {
+    document.getElementById("videos").innerHTML = list.length ? list.map(v => `
+      <div class="card" onclick='openVideo(${JSON.stringify(v).replace(/'/g,"&#39;")})'>
+        <img src="${v.thumbnail_url || "https://placehold.co/600x340/1e293b/38bdf8?text=SM+Video+Hub"}">
+        <div class="card-body">
+          <h3>${v.title}</h3>
+          <p>${v.category || "General"}</p>
+        </div>
+      </div>
+    `).join("") : "<p>কোনো ভিডিও পাওয়া যায়নি।</p>";
+  }
+
+  function openVideo(v) {
+    document.getElementById("videoFrame").innerHTML =
+      `<iframe src="${toEmbed(v.video_url)}" allowfullscreen></iframe>`;
+    document.getElementById("videoTitle").textContent = v.title;
+    document.getElementById("videoDesc").textContent = v.description || "";
+    document.getElementById("player").classList.add("active");
+  }
+
+  function closePlayer() {
+    document.getElementById("player").classList.remove("active");
+    document.getElementById("videoFrame").innerHTML = "";
+  }
+
+  document.getElementById("search").addEventListener("input", e => {
+    const q = e.target.value.toLowerCase();
+    render(allVideos.filter(v =>
+      v.title.toLowerCase().includes(q) ||
+      (v.description || "").toLowerCase().includes(q)
+    ));
+  });
+
+  async function loadVideos() {
+    const { data, error } = await supabase
+      .from("videos")
+      .select("*")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      document.getElementById("videos").innerHTML =
+        `<p>ডেটা লোড করা যায়নি: ${error.message}</p>`;
+      return;
+    }
+    allVideos = data || [];
+    render(allVideos);
+  }
+
+  loadVideos();
+</script>
+</body>
+</html>
